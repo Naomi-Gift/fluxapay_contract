@@ -1,13 +1,8 @@
 name: CD
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
   push:
-    tags:
-      - "v*.*.*"
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -29,10 +24,10 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  # Deploy to development environment (manual trigger only)
+  # Deploy to development environment (automatic on main push)
   deploy-dev:
     name: Deploy to Development
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'development'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'development')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
@@ -60,6 +55,8 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-deploy-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-deploy-
 
       - name: Build contract (optimized)
         working-directory: fluxapay
@@ -85,10 +82,11 @@ jobs:
           path: target/wasm32-unknown-unknown/release/*.wasm
           retention-days: 30
 
-  # Deploy to staging environment (automatic on main branch push)
+  # Deploy to staging environment (automatic on main push, after dev)
   deploy-staging:
     name: Deploy to Staging
-    if: github.event.workflow_run.conclusion == 'success'
+    needs: [deploy-dev]
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
@@ -103,10 +101,19 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
+      - name: Cache Stellar CLI
+        uses: actions/cache@v4
+        id: cache-stellar-cli-staging
+        with:
+          path: ~/.cargo/bin/stellar
+          key: ${{ runner.os }}-stellar-cli
+
       - name: Install Stellar CLI
-        run: |
-          cargo install --locked stellar-cli --features opt
-          stellar --version
+        if: steps.cache-stellar-cli-staging.outputs.cache-hit != 'true'
+        run: cargo install --locked stellar-cli --features opt
+
+      - name: Verify Stellar CLI
+        run: stellar --version
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -116,6 +123,8 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-deploy-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-deploy-
 
       - name: Build contract (optimized)
         working-directory: fluxapay
@@ -141,10 +150,10 @@ jobs:
           path: target/wasm32-unknown-unknown/release/*.wasm
           retention-days: 90
 
-  # Deploy to production (manual approval required)
+  # Deploy to production (manual trigger only, requires approval)
   deploy-production:
     name: Deploy to Production
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
@@ -181,6 +190,8 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-deploy-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-deploy-
 
       - name: Build contract (optimized)
         working-directory: fluxapay
@@ -198,15 +209,6 @@ jobs:
           #   --network mainnet \
           #   --source $STELLAR_SECRET_KEY
           echo "Contract deployed successfully to production"
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: target/wasm32-unknown-unknown/release/*.wasm
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload deployment artifacts
         uses: actions/upload-artifact@v4
