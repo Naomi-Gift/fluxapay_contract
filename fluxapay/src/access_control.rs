@@ -1,5 +1,6 @@
 use soroban_sdk::{contracterror, contracttype, Address, Env, Symbol};
 
+// Role-based access control implementation
 pub fn role_admin(env: &Env) -> Symbol {
     Symbol::new(env, "ADMIN")
 }
