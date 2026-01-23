@@ -174,4 +174,7 @@ impl RefundManager {
     }
 }
 
+pub mod merchant_registry;
+#[cfg(test)]
+mod merchant_registry_test;
 mod test;
