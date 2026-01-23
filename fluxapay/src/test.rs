@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use super::*;
+use access_control::{role_admin, role_merchant, role_oracle, role_settlement_operator};
 use soroban_sdk::{testutils::Address as _, Address, Env, String};
-use access_control::{role_admin, role_oracle, role_settlement_operator, role_merchant};
 
 fn setup_contract(env: &Env) -> (Address, RefundManagerClient<'_>) {
     let contract_id = env.register(RefundManager, ());
@@ -96,7 +96,6 @@ fn test_get_payment_refunds() {
 fn test_invalid_refund_amount() {
     let env = Env::default();
     let (_admin, _client) = setup_contract(&env);
-
 }
 
 #[test]
@@ -121,8 +120,8 @@ fn test_process_already_processed_refund() {
 
 #[test]
 fn test_get_nonexistent_refund() {
-    let env = Env::default();
-    let (_admin, _client) = setup_contract(&env);
+    let _env = Env::default();
+    let (_admin, _client) = setup_contract(&_env);
 }
 
 #[test]
@@ -152,9 +151,9 @@ fn test_grant_role() {
 
 #[test]
 fn test_grant_role_unauthorized() {
-    let env = Env::default();
-    let (_admin, client) = setup_contract(&env);
-    let unauthorized = Address::generate(&env);
+    let _env = Env::default();
+    let (_admin, _client) = setup_contract(&_env);
+    let _unauthorized = Address::generate(&_env);
 }
 
 #[test]

@@ -8,6 +8,7 @@ pub fn role_oracle(env: &Env) -> Symbol {
     Symbol::new(env, "ORACLE")
 }
 
+#[allow(dead_code)]
 pub fn role_merchant(env: &Env) -> Symbol {
     Symbol::new(env, "MERCHANT")
 }
@@ -122,11 +123,10 @@ impl AccessControl {
     }
 
     pub fn get_admin(env: &Env) -> Option<Address> {
-        env.storage()
-            .persistent()
-            .get(&AccessControlDataKey::Admin)
+        env.storage().persistent().get(&AccessControlDataKey::Admin)
     }
 
+    #[allow(dead_code)]
     pub fn require_role(
         env: &Env,
         role: &Symbol,
@@ -139,9 +139,10 @@ impl AccessControl {
     }
 
     fn grant_role_internal(env: &Env, role: &Symbol, account: &Address) {
-        env.storage()
-            .persistent()
-            .set(&AccessControlDataKey::Role(role.clone(), account.clone()), &true);
+        env.storage().persistent().set(
+            &AccessControlDataKey::Role(role.clone(), account.clone()),
+            &true,
+        );
     }
 
     fn revoke_role_internal(env: &Env, role: &Symbol, account: &Address) {

@@ -4,7 +4,7 @@ use soroban_sdk::{
 };
 
 mod access_control;
-use access_control::{AccessControl, role_oracle, role_settlement_operator};
+use access_control::{role_oracle, role_settlement_operator, AccessControl};
 
 #[contract]
 pub struct RefundManager;
@@ -61,8 +61,7 @@ impl RefundManager {
         role: Symbol,
         account: Address,
     ) -> Result<(), Error> {
-        AccessControl::grant_role(&env, admin, role, account)
-            .map_err(|_| Error::AccessControlError)
+        AccessControl::grant_role(&env, admin, role, account).map_err(|_| Error::AccessControlError)
     }
 
     pub fn revoke_role(
@@ -80,8 +79,7 @@ impl RefundManager {
     }
 
     pub fn renounce_role(env: Env, account: Address, role: Symbol) -> Result<(), Error> {
-        AccessControl::renounce_role(&env, account, role)
-            .map_err(|_| Error::AccessControlError)
+        AccessControl::renounce_role(&env, account, role).map_err(|_| Error::AccessControlError)
     }
 
     pub fn transfer_admin(
@@ -147,14 +145,11 @@ impl RefundManager {
         Ok(refund_id)
     }
 
-    pub fn process_refund(
-        env: Env,
-        operator: Address,
-        refund_id: String,
-    ) -> Result<(), Error> {
-        let has_settlement = AccessControl::has_role(&env, &role_settlement_operator(&env), &operator);
+    pub fn process_refund(env: Env, operator: Address, refund_id: String) -> Result<(), Error> {
+        let has_settlement =
+            AccessControl::has_role(&env, &role_settlement_operator(&env), &operator);
         let has_oracle = AccessControl::has_role(&env, &role_oracle(&env), &operator);
-        
+
         if !has_settlement && !has_oracle {
             return Err(Error::Unauthorized);
         }
